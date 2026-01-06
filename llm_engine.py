@@ -1,7 +1,12 @@
 import requests
 import os
+from dotenv import load_dotenv
 
+load_dotenv()
 
+# =====================================================
+# Environment & Config
+# =====================================================
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
 if not OPENROUTER_API_KEY:
@@ -18,9 +23,20 @@ HEADERS = {
 
 MODEL = "mistralai/mistral-7b-instruct"
 
+MAX_INPUT_CHARS = 1200   
+MAX_OUTPUT_TOKENS = 350   
 
 # =====================================================
-# Core LLM Call
+# Utility: Safe truncation
+# =====================================================
+def _truncate(text, max_chars=MAX_INPUT_CHARS):
+    if not text:
+        return ""
+    return text[:max_chars]
+
+
+# =====================================================
+# Core LLM Call (SAFE)
 # =====================================================
 def generate_ai_response(prompt):
     payload = {
@@ -29,62 +45,74 @@ def generate_ai_response(prompt):
             {"role": "user", "content": prompt}
         ],
         "temperature": 0.4,
-        "max_tokens": 800,
+        "max_tokens": MAX_OUTPUT_TOKENS,
     }
 
-    response = requests.post(
-        API_URL,
-        headers=HEADERS,
-        json=payload,
-        timeout=30
-    )
+    try:
+        response = requests.post(
+            API_URL,
+            headers=HEADERS,
+            json=payload,
+            timeout=30
+        )
 
-    response.raise_for_status()
-    data = response.json()
+        if response.status_code != 200:
+            return (
+                "⚠️ AI service is temporarily unavailable.\n\n"
+                "Please try again in a moment.\n"
+                "Rule-based insights are still available."
+            )
 
-    return data["choices"][0]["message"]["content"]
+        data = response.json()
+        return data["choices"][0]["message"]["content"].strip()
+
+    except Exception:
+        return (
+            "⚠️ AI service error occurred.\n\n"
+            "Please try again shortly."
+        )
 
 
 # =====================================================
-# AI Functions
+# AI Features
 # =====================================================
 def generate_career_explanation(skills, roles):
     prompt = (
-        f"The candidate has skills: {', '.join(skills)}.\n"
-        f"Suggested roles: {', '.join(roles)}.\n\n"
-        "Explain clearly and concisely why these roles are suitable."
+        f"Skills: {', '.join(skills)}\n"
+        f"Suggested roles: {', '.join(roles)}\n\n"
+        "Explain why these roles fit the candidate.\n"
+        "Use 5–6 concise bullet points."
     )
     return generate_ai_response(prompt)
 
 
 def rewrite_resume_bullets(resume_text):
+    safe_resume = _truncate(resume_text)
+
     prompt = (
         "You are a senior technical resume reviewer.\n\n"
-        "Analyze the resume below and provide ONLY improvement suggestions.\n\n"
+        "Provide ONLY improvement suggestions.\n\n"
         "Rules:\n"
-        "- Do NOT rewrite the entire resume\n"
-        "- Do NOT repeat resume content verbatim\n"
-        "- Identify weak bullet points\n"
-        "- Suggest how to improve them\n"
-        "- Mention what should be replaced and why\n"
-        "- Focus on impact, clarity, and technical depth\n"
-        "- Use bullet points for suggestions\n\n"
-        "Resume:\n"
-        f"{resume_text[:1200]}"
+        "- Do NOT rewrite the resume\n"
+        "- Do NOT repeat content\n"
+        "- Point out weaknesses\n"
+        "- Suggest improvements and replacements\n"
+        "- Focus on impact and technical clarity\n"
+        "- Use bullet points only\n\n"
+        f"Resume excerpt:\n{safe_resume}"
     )
     return generate_ai_response(prompt)
 
+
 def generate_interview_questions(skills, roles):
     prompt = (
-        "You are an interviewer.\n\n"
         f"Candidate skills: {', '.join(skills)}\n"
         f"Target roles: {', '.join(roles)}\n\n"
-        "Generate 6 interview questions:\n"
-        "- 3 technical questions\n"
-        "- 3 behavioral questions\n"
-        "Format as a numbered list.\n"
-        "Do not include special tokens.\n"
-        "Ensure the response is complete."
+        "Generate exactly 6 interview questions:\n"
+        "- 3 technical\n"
+        "- 3 behavioral\n"
+        "Number them clearly.\n"
+        "Ensure the response completes fully."
     )
     return generate_ai_response(prompt)
 
