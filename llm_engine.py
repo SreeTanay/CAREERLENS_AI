@@ -9,37 +9,36 @@ load_dotenv()
 # =====================================================
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
 
+# Do NOT crash the app — let UI handle absence gracefully
 if not OPENROUTER_API_KEY:
-    raise ValueError("OPENROUTER_API_KEY not found in environment variables")
+    OPENROUTER_API_KEY = None
 
 API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 HEADERS = {
-    "Authorization": f"Bearer {OPENROUTER_API_KEY}",
+    "Authorization": f"Bearer {OPENROUTER_API_KEY}" if OPENROUTER_API_KEY else "",
     "Content-Type": "application/json",
     "HTTP-Referer": "https://careerlens-ai.streamlit.app",
     "X-Title": "CareerLens AI",
 }
 
 MODEL = "mistralai/mistral-7b-instruct"
-
-MAX_INPUT_CHARS = 1200     # 🔴 critical
-MAX_OUTPUT_TOKENS = 350   # 🔴 critical
+MAX_OUTPUT_TOKENS = 300
 
 
 # =====================================================
-# Utility: Safe truncation
-# =====================================================
-def _truncate(text, max_chars=MAX_INPUT_CHARS):
-    if not text:
-        return ""
-    return text[:max_chars]
-
-
-# =====================================================
-# Core LLM Call (SAFE)
+# Core LLM Call (GRACEFUL)
 # =====================================================
 def generate_ai_response(prompt):
+    """
+    Returns:
+        - string (AI response) on success
+        - None on any failure
+    """
+
+    if not OPENROUTER_API_KEY:
+        return None
+
     payload = {
         "model": MODEL,
         "messages": [
@@ -54,28 +53,32 @@ def generate_ai_response(prompt):
             API_URL,
             headers=HEADERS,
             json=payload,
-            timeout=30
+            timeout=25
         )
 
         if response.status_code != 200:
-            return (
-                "⚠️ AI service is temporarily unavailable.\n\n"
-                "Please try again in a moment.\n"
-                "Rule-based insights are still available."
-            )
+            return None
 
         data = response.json()
-        return data["choices"][0]["message"]["content"].strip()
+
+        content = (
+            data.get("choices", [{}])[0]
+            .get("message", {})
+            .get("content", "")
+            .strip()
+        )
+
+        if not content:
+            return None
+
+        return content
 
     except Exception:
-        return (
-            "⚠️ AI service error occurred.\n\n"
-            "Please try again shortly."
-        )
+        return None
 
 
 # =====================================================
-# AI Features
+# AI Features (Thin Wrappers)
 # =====================================================
 def generate_career_explanation(skills, roles):
     prompt = (
@@ -88,19 +91,17 @@ def generate_career_explanation(skills, roles):
 
 
 def rewrite_resume_bullets(resume_text):
-    safe_resume = _truncate(resume_text)
-
     prompt = (
         "You are a senior technical resume reviewer.\n\n"
         "Provide ONLY improvement suggestions.\n\n"
         "Rules:\n"
         "- Do NOT rewrite the resume\n"
         "- Do NOT repeat content\n"
-        "- Point out weaknesses\n"
-        "- Suggest improvements and replacements\n"
+        "- Identify weak points\n"
+        "- Suggest how to improve or replace them\n"
         "- Focus on impact and technical clarity\n"
         "- Use bullet points only\n\n"
-        f"Resume excerpt:\n{safe_resume}"
+        f"Resume:\n{resume_text[:1200]}"
     )
     return generate_ai_response(prompt)
 
@@ -112,10 +113,10 @@ def generate_interview_questions(skills, roles):
         "Generate exactly 6 interview questions:\n"
         "- 3 technical\n"
         "- 3 behavioral\n"
-        "Number them clearly.\n"
-        "Ensure the response completes fully."
+        "Number them clearly."
     )
     return generate_ai_response(prompt)
+
 
 
 
