@@ -48,6 +48,10 @@ CareerLens AI is an AI-powered resume analysis and career guidance application t
 - **Resume intelligence systems**
 - **End-to-end application development**
 - **Real-world career assistance use cases**
+## Author
+**Sree Tanay Javangula**
+**📧 sreetanayjavangula21@gmail.com**
+**🔗 GitHub: https://github.com/SreeTanay**
 
 ## 🏗️ Project Structure
 
@@ -65,8 +69,5 @@ CAREERLENS_AI/
 │   └── careerlens_logo.png
 └── README.md
 
-## Author
-Sree Tanay Javangula
-📧 sreetanayjavangula21@gmail.com
-🔗 GitHub: https://github.com/SreeTanay
+
 
