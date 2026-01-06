@@ -23,8 +23,9 @@ HEADERS = {
 
 MODEL = "mistralai/mistral-7b-instruct"
 
-MAX_INPUT_CHARS = 1200   
-MAX_OUTPUT_TOKENS = 350   
+MAX_INPUT_CHARS = 1200     # 🔴 critical
+MAX_OUTPUT_TOKENS = 350   # 🔴 critical
+
 
 # =====================================================
 # Utility: Safe truncation
@@ -115,6 +116,7 @@ def generate_interview_questions(skills, roles):
         "Ensure the response completes fully."
     )
     return generate_ai_response(prompt)
+
 
 
 
