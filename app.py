@@ -10,20 +10,7 @@ from llm_engine import (
 )
 
 # =====================================================
-# Session State Initialization
-# =====================================================
-if "career_explanation" not in st.session_state:
-    st.session_state.career_explanation = None
-
-if "improved_resume" not in st.session_state:
-    st.session_state.improved_resume = None
-
-if "interview_questions" not in st.session_state:
-    st.session_state.interview_questions = None
-
-
-# =====================================================
-# Page Configuration
+# Page Configuration (must be first Streamlit call)
 # =====================================================
 st.set_page_config(
     page_title="CareerLens AI",
@@ -31,9 +18,15 @@ st.set_page_config(
     layout="wide",
 )
 
+# =====================================================
+# Session State Initialization
+# =====================================================
+st.session_state.setdefault("career_explanation", "")
+st.session_state.setdefault("improved_resume", "")
+st.session_state.setdefault("interview_questions", "")
 
 # =====================================================
-# Header: Logo BESIDE Title (Clean & Professional)
+# Header: Logo beside Title
 # =====================================================
 header_col1, header_col2 = st.columns([1, 7])
 
@@ -56,7 +49,6 @@ with header_col2:
 
 st.markdown("---")
 
-
 # =====================================================
 # File Upload
 # =====================================================
@@ -68,7 +60,6 @@ uploaded_file = st.file_uploader(
 if uploaded_file is None:
     st.info("👆 Please upload a resume PDF to continue.")
     st.stop()
-
 
 # =====================================================
 # Resume Processing & Validation
@@ -82,13 +73,11 @@ if not is_likely_resume(resume_text):
 
 st.success("✅ Resume validated successfully!")
 
-
 # =====================================================
 # Rule-Based Analysis
 # =====================================================
 skills = extract_skills(resume_text)
 roles = suggest_roles(skills)
-
 
 # =====================================================
 # Tabs Layout
@@ -97,48 +86,38 @@ tab_resume, tab_career, tab_improve, tab_interview = st.tabs(
     ["📄 Resume", "🎯 Career Fit", "✍️ Improvements", "🎤 Interview Prep"]
 )
 
-
 # =====================================================
 # TAB 1 — Resume
 # =====================================================
 with tab_resume:
     st.subheader("📄 Extracted Resume Content")
-    st.text_area(
-        "Resume Text",
-        resume_text,
-        height=350,
-    )
-    st.caption("🔒 Uploaded resumes are processed only for this session and are not stored.")
-
+    st.text_area("Resume Text", resume_text, height=350)
+    st.caption("🔒 Resumes are processed only for this session and not stored.")
 
 # =====================================================
 # TAB 2 — Career Fit
 # =====================================================
 with tab_career:
     st.subheader("🛠️ Detected Skills")
-
-    if skills:
-        st.write(skills)
-    else:
-        st.warning("No recognizable skills detected.")
+    st.write(skills if skills else "No recognizable skills detected.")
 
     st.subheader("🎯 Suggested Career Roles")
     for role in roles:
         st.write("•", role)
 
     st.divider()
-
     st.subheader("🤖 AI Career Explanation")
 
-    if st.button("Generate Career Explanation"):
+    if st.button("Generate Career Explanation", key="career_btn"):
         with st.spinner("🤖 Generating explanation..."):
-            st.session_state.career_explanation = generate_career_explanation(
-                skills, roles
+            result = generate_career_explanation(skills, roles)
+            st.session_state.career_explanation = (
+                result if result.strip()
+                else "⚠️ AI explanation is currently unavailable. Please try again later."
             )
 
     if st.session_state.career_explanation:
         st.markdown(st.session_state.career_explanation)
-
 
 # =====================================================
 # TAB 3 — Resume Improvements
@@ -150,13 +129,16 @@ with tab_improve:
         "what to replace, and how to strengthen impact."
     )
 
-    if st.button("Analyze Resume for Improvements"):
+    if st.button("Analyze Resume for Improvements", key="improve_btn"):
         with st.spinner("🔍 Analyzing resume..."):
-            st.session_state.improved_resume = rewrite_resume_bullets(resume_text)
+            result = rewrite_resume_bullets(resume_text)
+            st.session_state.improved_resume = (
+                result if result.strip()
+                else "⚠️ AI suggestions are temporarily unavailable."
+            )
 
     if st.session_state.improved_resume:
         st.markdown(st.session_state.improved_resume)
-
 
 # =====================================================
 # TAB 4 — Interview Preparation
@@ -168,21 +150,23 @@ with tab_interview:
         "based on your resume and skill set."
     )
 
-    if st.button("Generate Interview Questions"):
+    if st.button("Generate Interview Questions", key="interview_btn"):
         with st.spinner("🎯 Generating interview questions..."):
-            st.session_state.interview_questions = generate_interview_questions(
-                skills, roles
+            result = generate_interview_questions(skills, roles)
+            st.session_state.interview_questions = (
+                result if result.strip()
+                else "⚠️ Interview questions are temporarily unavailable."
             )
 
     if st.session_state.interview_questions:
-        cleaned_questions = (
+        cleaned = (
             st.session_state.interview_questions
             .replace("<s>", "")
             .replace("[INST]", "")
             .replace("[/INST]", "")
             .strip()
         )
-        st.markdown(cleaned_questions)
+        st.markdown(cleaned)
 
 
 
