@@ -10,7 +10,7 @@ from llm_engine import (
 )
 
 # =====================================================
-# Page Configuration (must be first Streamlit call)
+# Page Configuration (FIRST Streamlit call)
 # =====================================================
 st.set_page_config(
     page_title="CareerLens AI",
@@ -19,21 +19,21 @@ st.set_page_config(
 )
 
 # =====================================================
-# Session State Initialization
+# Session State (SAFE defaults)
 # =====================================================
-st.session_state.setdefault("career_explanation", "")
-st.session_state.setdefault("improved_resume", "")
-st.session_state.setdefault("interview_questions", "")
+st.session_state.setdefault("career_explanation", None)
+st.session_state.setdefault("improved_resume", None)
+st.session_state.setdefault("interview_questions", None)
 
 # =====================================================
-# Header: Logo beside Title
+# Header
 # =====================================================
-header_col1, header_col2 = st.columns([1, 7])
+col1, col2 = st.columns([1, 7])
 
-with header_col1:
+with col1:
     st.image("assets/careerlens_logo.png", width=80)
 
-with header_col2:
+with col2:
     st.markdown(
         """
         <h2 style="color:#3B82F6; margin-bottom:4px;">
@@ -62,7 +62,7 @@ if uploaded_file is None:
     st.stop()
 
 # =====================================================
-# Resume Processing & Validation
+# Resume Processing
 # =====================================================
 with st.spinner("🔍 Reading and validating your resume..."):
     resume_text = extract_text_from_pdf(uploaded_file)
@@ -80,7 +80,7 @@ skills = extract_skills(resume_text)
 roles = suggest_roles(skills)
 
 # =====================================================
-# Tabs Layout
+# Tabs
 # =====================================================
 tab_resume, tab_career, tab_improve, tab_interview = st.tabs(
     ["📄 Resume", "🎯 Career Fit", "✍️ Improvements", "🎤 Interview Prep"]
@@ -92,7 +92,7 @@ tab_resume, tab_career, tab_improve, tab_interview = st.tabs(
 with tab_resume:
     st.subheader("📄 Extracted Resume Content")
     st.text_area("Resume Text", resume_text, height=350)
-    st.caption("🔒 Resumes are processed only for this session and not stored.")
+    st.caption("🔒 Resume is processed only for this session.")
 
 # =====================================================
 # TAB 2 — Career Fit
@@ -111,12 +111,16 @@ with tab_career:
     if st.button("Generate Career Explanation", key="career_btn"):
         with st.spinner("🤖 Generating explanation..."):
             result = generate_career_explanation(skills, roles)
-            st.session_state.career_explanation = (
-                result if result.strip()
-                else "⚠️ AI explanation is currently unavailable. Please try again later."
-            )
 
-    if st.session_state.career_explanation:
+            if isinstance(result, str) and result.strip():
+                st.session_state.career_explanation = result.strip()
+            else:
+                st.session_state.career_explanation = (
+                    "⚠️ AI service is currently unavailable.\n\n"
+                    "Skills and role suggestions above are still valid."
+                )
+
+    if isinstance(st.session_state.career_explanation, str):
         st.markdown(st.session_state.career_explanation)
 
 # =====================================================
@@ -124,49 +128,47 @@ with tab_career:
 # =====================================================
 with tab_improve:
     st.subheader("✍️ Resume Improvement Suggestions")
-    st.write(
-        "Actionable feedback on **what to improve**, "
-        "what to replace, and how to strengthen impact."
-    )
 
     if st.button("Analyze Resume for Improvements", key="improve_btn"):
         with st.spinner("🔍 Analyzing resume..."):
             result = rewrite_resume_bullets(resume_text)
-            st.session_state.improved_resume = (
-                result if result.strip()
-                else "⚠️ AI suggestions are temporarily unavailable."
-            )
 
-    if st.session_state.improved_resume:
+            if isinstance(result, str) and result.strip():
+                st.session_state.improved_resume = result.strip()
+            else:
+                st.session_state.improved_resume = (
+                    "⚠️ Resume improvement analysis is temporarily unavailable."
+                )
+
+    if isinstance(st.session_state.improved_resume, str):
         st.markdown(st.session_state.improved_resume)
 
 # =====================================================
-# TAB 4 — Interview Preparation
+# TAB 4 — Interview Prep
 # =====================================================
 with tab_interview:
     st.subheader("🎤 Interview Preparation")
-    st.write(
-        "Role-specific technical and behavioral interview questions "
-        "based on your resume and skill set."
-    )
 
     if st.button("Generate Interview Questions", key="interview_btn"):
         with st.spinner("🎯 Generating interview questions..."):
             result = generate_interview_questions(skills, roles)
-            st.session_state.interview_questions = (
-                result if result.strip()
-                else "⚠️ Interview questions are temporarily unavailable."
-            )
 
-    if st.session_state.interview_questions:
-        cleaned = (
-            st.session_state.interview_questions
-            .replace("<s>", "")
-            .replace("[INST]", "")
-            .replace("[/INST]", "")
-            .strip()
-        )
-        st.markdown(cleaned)
+            if isinstance(result, str) and result.strip():
+                cleaned = (
+                    result.replace("<s>", "")
+                          .replace("[INST]", "")
+                          .replace("[/INST]", "")
+                          .strip()
+                )
+                st.session_state.interview_questions = cleaned
+            else:
+                st.session_state.interview_questions = (
+                    "⚠️ Interview questions are temporarily unavailable."
+                )
+
+    if isinstance(st.session_state.interview_questions, str):
+        st.markdown(st.session_state.interview_questions)
+
 
 
 

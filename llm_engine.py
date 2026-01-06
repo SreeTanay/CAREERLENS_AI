@@ -27,20 +27,9 @@ MAX_OUTPUT_TOKENS = 300
 # Core LLM Call (GRACEFUL)
 # =====================================================
 def generate_ai_response(prompt):
-    """
-    Returns:
-        - string (AI response) on success
-        - None on any failure
-    """
-
-    if not OPENROUTER_API_KEY:
-        return None
-
     payload = {
         "model": MODEL,
-        "messages": [
-            {"role": "user", "content": prompt}
-        ],
+        "messages": [{"role": "user", "content": prompt}],
         "temperature": 0.4,
         "max_tokens": MAX_OUTPUT_TOKENS,
     }
@@ -50,7 +39,7 @@ def generate_ai_response(prompt):
             API_URL,
             headers=HEADERS,
             json=payload,
-            timeout=25
+            timeout=30
         )
 
         if response.status_code != 200:
@@ -58,20 +47,19 @@ def generate_ai_response(prompt):
 
         data = response.json()
 
-        content = (
-            data.get("choices", [{}])[0]
-            .get("message", {})
-            .get("content", "")
-            .strip()
-        )
-
-        if not content:
+        if (
+            "choices" not in data
+            or not data["choices"]
+            or "message" not in data["choices"][0]
+            or "content" not in data["choices"][0]["message"]
+        ):
             return None
 
-        return content
+        return data["choices"][0]["message"]["content"]
 
     except Exception:
         return None
+
 
 
 # =====================================================
